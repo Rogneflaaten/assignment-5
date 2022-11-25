@@ -58,9 +58,7 @@ I utrente personer som begynner med styrketrening varierer økningen i muskelsty
 
 Sannsynligvis er det et dose-respons-forhold mellom treningsmengde og styrkeøkning per tidsenhet [@raastad_styrketrening_2010]. Treningsmengden er både avhengig av antall økter i uka og hvor mange serier eller øvelser vi trener på hver muskegruppe. Ettersom tidsbegrensninger ofte hindrer deltakere i treningsprogrammer [@choi_correlates_2017] er det av interesse å finne den minimale treningsdosen som gir gunstige adaptasjoner. Oversiktsarikler fra en amerikansk forskergruppe løfter konseptet om at en serie i hver øvelse er den mest effektive treningsformen [@carpinelli_strength_1998; @carpinelli_berger_2002]. Videre hevder de at det er bortkastet tid å gjennomføre mer enn en serie på en muskelgruppe. Andre meta-analyser viser at moderate treningsvolum (3 serier) er fordelaktig [@krieger_single_2009; @krieger_single_2010]. Disse ambivalente resultatene skyldes til dels denne store interindivid-variasjonen i treningsrespons. Intraindivide studiedesign med unilateral treningsvolum grupper vil trolig fjerne mye usikkerhet.
 
-Målet med denne studien var å undersøke effekten av single- og multiserie (3 serier) treningsprotokoller på muskelstyrke og muskelmasse med et intraindivid studiedesign. 
-
-
+Målet med denne studien var å undersøke effekten av single- og multiserie (3 serier) treningsprotokoller på muskelstyrke og muskelmasse med et intraindivid studiedesign.
 
 ## Metode
 
@@ -384,7 +382,8 @@ plot_grid(figA, figB, ncol = 1,
 ```
 
 
-
 ## Diskusjon
+
+I denne studien så vi ikke en effekt av treningsvolum på utvikling i muskemasse eller muskelstyrke. For utrente individer ser det dermed ut som man får like stor styrke- og muskelvekst av å gjennomføre en serie per muskelgruppe som å gjennomføre tre serier. Dette samsvarer med oversiktsartiklene som hevder at det ikke finnes en ytterligere gevinst av å øke treningsvolumet utover en serie [@carpinelli_strength_1998; @carpinelli_berger_2002]. Det samsvarer derimot ikke med meta-analyser som har konkludert med at moderat volum er fordelaktig på utvikling i muskelstyrke og muskelmasse [@krieger_single_2009; @krieger_single_2010; @schoenfeld_dose-response_2017]. Resultatene i denne studien bør imidlertidig tolkes forsiktig ettersom en nokså lav utvalgstørrelse på 19 senker den statistiske styrke. I tillegg var deltakerne på et lavt treningsnivå før intervensjonen, for utrente har treningsvolum trolig mindre betydning på styrke- og muskelvekst [@raastad_styrketrening_2010]. Generelt ser det ut til at jo bedre trent personen er, desto flere serier må personen trene på hver muskelgruppe [@peterson_maximizing_2004; @rhea_meta-analysis_2003]. 
 
 ## Referanser
