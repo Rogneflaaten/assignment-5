@@ -3,6 +3,8 @@ title: "Assignment 5"
 format: html
 editor_options: 
   chunk_output_type: console
+bibliography: referanser.bib
+csl: apa.csl
 ---
 ```{r}
 #| label: "setup"
@@ -52,6 +54,9 @@ data <- dxadata %>%
 
 ## Metode
 
+### Deltakere og studiedesign
+
+
 ```{r}
 #| echo: false
 #| warning: false
@@ -67,7 +72,7 @@ dxadata %>%
                cols = lean.left_leg:lean.right_leg) %>% 
   mutate(leg = if_else(leg == "lean.left_leg", "L", "R"), 
          sets = if_else(multiple == leg, "multiple", "single"),
-         lean.mass = lean.mass / 100) %>%
+         lean.mass = lean.mass / 1000) %>%
   select(participant, age, height, weight, time, sex, include, sets, leg, lean.mass) %>%
   full_join(strengthvolume) %>% 
   filter(exercise == "legext",
@@ -77,11 +82,11 @@ dxadata %>%
   ungroup() %>% 
   filter(time == "pre") %>% 
   group_by(sets) %>% 
-  mutate(N = n()) %>% 
+  mutate(N = n()) %>%
   pivot_longer(names_to = "variable",
                values_to = "values",
                cols = c(age, height, weight, lean.mass, load, N)) %>% 
-  group_by(sets, variable) %>% 
+  group_by(variable) %>% 
   summarise(Mean = mean(values, na.rm = T),
             SD = sd(values, na.rm = T)) %>% 
    mutate(MS = if_else(variable == "N",
@@ -91,19 +96,22 @@ dxadata %>%
                         signif(SD, 3), 
                         ")"))) %>% 
   select(-Mean, -SD) %>%
-  pivot_wider(names_from = sets,
-              values_from = MS) %>% 
+  mutate(variable = factor(variable, levels = c("N", 
+                                                "age", 
+                                                "height", 
+                                                "weight", 
+                                                "lean.mass", 
+                                                "load"), 
+                           labels = c("N", "Alder", "Kroppslengde", "Kroppsvekt", "Fettfri Masse", "1RM Kneekstensjon"))) %>% 
+  arrange(variable) %>% 
   gt() %>% 
   cols_label(variable = "",
-             multiple = "3 serier",
-             single = "1 serie") %>% 
-  tab_footnote(footnote = "Abbriviations: lean.mass, fettfri masse; load, 1RM kneekstensjon")
+             MS = "gj.snitt (SD)") %>% 
+  tab_footnote(footnote = "Forkortelser: lean.mass, fettfri masse; load, 1RM kneekstensjon")
   
   
 ```
 
-
-### Deltakere og studiedesign
 
 ### DXA
 
@@ -115,8 +123,40 @@ dxadata %>%
 #| echo: false
 #| warning: false
 #| message: false
+#| label: "fig-str"
+#| fig-cap: "Volumavhengig effekt på muskelstyrke"
+
+
+data %>% 
+  group_by(time, sets) %>% 
+  summarise(Mean = mean(load, na.rm = T),
+            SD = sd(load, na.rm = T)) %>% 
+  mutate(timec = as.numeric(case_when(time == "pre" ~ 0,
+                                      time == "session1" ~ 0,
+                                      time == "week2" ~ 2,
+                                      time == "week5" ~ 5,
+                                      time == "week9" ~ 9,
+                                      time == "post" ~ 12))) %>% 
+  ggplot(aes(timec, Mean, group = sets, color = sets)) +
+  geom_line(position = position_dodge(width = 0.7)) +
+  geom_point(position = position_dodge(width = 0.7),
+             size = 3) +
+  scale_x_continuous(breaks = seq(0, 16, 1)) +
+  scale_y_continuous(breaks = seq(50, 100, 5)) +
+  labs(x = "Tid (uker)",
+       y = "1RM Kneekstensjon (kg)",
+       color = "Treningsvolum") +
+  theme_classic()
+```
+
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
 #| label: "tbl-str"
-#| tbl-cap: "Resultater i styrkeøkning fra LMM"
+#| tbl-cap: "Volumavhengig effekt på muskelstyrke fra LMM"
 
 # The lmer function from the lme4 package.
 m1_str <- lmer(load ~ timec * sets + (1|participant), data = data)
@@ -140,22 +180,52 @@ res_str
 
 
 ```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: "tbl-lbm"
+#| tbl-cap: "Volumavhegig effekt på muskelmasse fra LMM"
+
+
 data_lmb <- data %>% 
   filter(time == "pre" | time == "post") %>% 
   select(participant, time, sets, lean.mass) %>% 
-  mutate(lean.mass = lean.mass / 100)
+  mutate(lean.mass = lean.mass / 1000)
 
 m1_lbm <- lmer(lean.mass ~ time * sets + (1|participant), data = data_lmb)
 
 m0_lbm <- lmer(lean.mass ~ time + sets + (1|participant), data = data_lmb)
 
-p_lbm <- anova(m0_lbm, m1_lbm)[2,8]
+res_lbm <- summary(m1_lbm)$coef %>% 
+  data.frame() %>% 
+   mutate(Koeffisienter = c("Intercept", "Tid", "Gruppe3serier", "Tid:Gruppe3serier")) %>% 
+  select(Koeffisienter, Estimate, Std..Error, df, t.value, Pr...t..) %>% 
+  gt() %>% 
+  cols_label(Estimate = "estimat",
+             Std..Error = "se",
+             df = "df",
+             t.value = "t.verdi",
+             Pr...t.. = "p.verdi") %>% 
+  fmt_number(columns = Estimate:Pr...t.., decimals = 2) %>% 
+  tab_footnote(footnote = "Forkortelser: se, standardfeil; df, frihetsgrader")
 
-est_lbm <- emmeans(m1_lbm, specs = ~ time|sets)
+res_lbm
+
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: "fig-lbm"
+#| fig-cap: "Volumavhengig effekt på muskelmasse"
+#| fig-subcap: "Figur A viser endring i fettfri masse fra pre- til posttest for begge volumgruppene. Figur B viser den gjennomsnittlige forskjellen mellom volumgruppene for både pre- og posttest"
 
 
 
 ## Figure 1: Estimated means and raw data
+
+est_lbm <- emmeans(m1_lbm, specs = ~ time|sets)
 
 figA <- est_lbm %>%
   data.frame() %>%
@@ -177,7 +247,8 @@ figA <- est_lbm %>%
   
   # Changing axis titles and title in the legend
   labs(y = "Fettfri masse (kg)", 
-       color = "Treningsvolum") +
+       color = "Treningsvolum",
+       tag = "A") +
    theme(axis.text.x = element_blank(), 
         axis.title.x = element_blank())
   
@@ -217,7 +288,8 @@ figB <- coef_summary_lbm %>%
   
     # Changing axis titles and title in the legend
   labs(y = "Gj.snitt gruppevis forskjell\n(kg, 95% CI)",
-       x = "Tidspunkt") 
+       x = "Tidspunkt",
+       tag = "B") 
 
   
 # Using cowplot to plot both figures in 1
