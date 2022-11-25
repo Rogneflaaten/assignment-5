@@ -20,6 +20,9 @@ library(pbkrtest)
 library(lmerTest)
 library(cowplot)
 library(gt)
+library(webshot2)
+library(patchwork)
+library(png)
 
 
 data("strengthvolume")
@@ -55,7 +58,7 @@ data <- dxadata %>%
 ## Metode
 
 ### Deltakere og studiedesign
-
+41 menn og kvinner deltakere ble rekrutert til den nåværende studien med initielle kriterier som ikke-røykene og alder mellom 18 og 40 år. Eksklusjonskriteriene var intoleranse til lokal bedøvelse, mer enn en ukentlig styrketreningsøkt det siste året, redusert muskelstyrke pga tidligere eller nåværende skader, og intak av medikamenter som kan påvirke adaptasjoner til trening. I dataanalysen ble alle deltakere som ikke gjennomførte kneekstensjonsstesting på hvert tidspunkt brukt (N = 22). Deltakernes karakteristikker vises i @tbl-kar.
 
 ```{r}
 #| echo: false
@@ -102,7 +105,12 @@ dxadata %>%
                                                 "weight", 
                                                 "lean.mass", 
                                                 "load"), 
-                           labels = c("N", "Alder", "Kroppslengde", "Kroppsvekt", "Fettfri Masse", "1RM Kneekstensjon"))) %>% 
+                           labels = c("N", 
+                                      "Alder", 
+                                      "Kroppslengde", 
+                                      "Kroppsvekt", 
+                                      "Fettfri Masse", 
+                                      "1RM Kneekstensjon"))) %>% 
   arrange(variable) %>% 
   gt() %>% 
   cols_label(variable = "",
@@ -113,9 +121,16 @@ dxadata %>%
 ```
 
 
-### DXA
+Intervensjonen bestå av 12 uker med helkropp styrketrening, alle deltakerne gjennomførte intervensjonen i løpet av september til november. Bein-øvelser ble utført unilateralt for å tillate innen-deltaker forskjeller i treningsvolum. Videre ble beinene til deltakerne tilfeldig fordelt til å utføre enten en serie (1 serie gruppen) og tre serier (3 serier gruppen), hver deltaker gjennomførte dermed begge protokollene. Maksimal muskelstyrke i kneekstensjon ble testet før (pre), underveis (uke 3, 5 og 9) og etter (post) intervensjonen. Kroppssammensetning ble målt før og etter treningsintervensjonen.
 
-### Maksimal kneekstensjon
+### DXA
+Kroppssammensetning ble bestemt før og etter intervensjonen med bruk av dual-energy X-ray absorptiometry (DXA) (Lunar Prodigy, GE Healthcare, Oslo, Norge), iht standard protokoll. Før DXA målinger ble deltakerne bedt om å være fastende i minimum to timer og frastå all fysisk anstrengende aktivitet de siste 48 timene. Mellom DXA målinger og forrige stykeøkt var det to dager.
+
+### Maksimal Styrke i kneekstensjon
+Maksimal stykre i kneekstensjon ble målt som den høyeste repetisjonen (1RM) i en unilateral kneekstensjon. Testprotokollen begynte med en spesifikk oppvarming bestående av 10, 6 og 3 repetisjoner på 50, 75 og 85% av predikert 1RM. Deretter ble 1RM fundet ved å øke motstanden (kg) progresivt inntil vekten ikke ble løftet i hele bevegelsesbanen, den høyeste vekten med fult bevegelsesutslag ble definert som 1RM. Hver deltaker fikk 4-6 forsøk.
+
+### Dataanalyse og Statistikk
+All beskrvende data er presentert som gj.snitt (standardfeil) om annet ikke er spesifisert. For å undersøke effekten av treningsvolum på muskelhypertrofi og styrke ble det brukt mixed linear models (LLMs) spesifisert med tid og tid til treningsvolum interaksjoner som fikserte effekter. LMMs ble spesifisert med tilfeldige intercepts for deltakerne. Plotter med residualer mot predikerte verdier ble visuelt inspisert for antakelser om homoskedastisitet. Statistisk signifikansnivå ble satt til < 0.05.
 
 ## Resultat
 
@@ -127,7 +142,7 @@ dxadata %>%
 #| fig-cap: "Volumavhengig effekt på muskelstyrke"
 
 
-data %>% 
+fig1 <- data %>% 
   group_by(time, sets) %>% 
   summarise(Mean = mean(load, na.rm = T),
             SD = sd(load, na.rm = T)) %>% 
@@ -145,8 +160,47 @@ data %>%
   scale_y_continuous(breaks = seq(50, 100, 5)) +
   labs(x = "Tid (uker)",
        y = "1RM Kneekstensjon (kg)",
-       color = "Treningsvolum") +
+       color = "Treningsvolum",
+       tag = "A") +
   theme_classic()
+
+tab1 <- data %>% 
+  group_by(time, sets) %>% 
+  summarise(Mean = mean(load, na.rm = T),
+            SD = sd(load, na.rm = T),
+            N = n()) %>% 
+   mutate(MS = if_else(time == "N",
+                      as.character(Mean),
+                      paste0(signif(Mean, 3),
+                             " (",
+                        signif(SD, 3), 
+                        ")"))) %>% 
+  select(-Mean, -SD, -N) %>% 
+  pivot_wider(names_from = time,
+              values_from = MS) %>% 
+  gt() %>% 
+  cols_label(sets = "Treningsvolum",
+             pre = "Pretest",
+             session1 = "Trening 1",
+             week2 = "Uke 2",
+             week5 = "Uke 5",
+             week9 = "Uke 9",
+             post = "Posttest") %>% 
+  tab_spanner(label = "Tidspunkt",
+              columns = pre:post) %>% 
+  tab_header(title = "(B)") %>% 
+  tab_footnote(footnote = "Data er presenter som gj.snitt (standardfeil)")
+
+tmp <- tempfile(fileext = '.png') #generate path to temp .png file
+gtsave(tab1, tmp) #save gt table as png
+table_png <- png::readPNG(tmp, native = TRUE) # read tmp png file
+
+
+
+fig1 / table_png
+
+
+
 ```
 
 
