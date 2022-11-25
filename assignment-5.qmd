@@ -1,0 +1,237 @@
+---
+title: "Assignment 5"
+format: html
+editor_options: 
+  chunk_output_type: console
+---
+```{r}
+#| label: "setup"
+#| include: false
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(exscidata)
+library(lme4)
+library(emmeans)
+library(pbkrtest)
+library(lmerTest)
+library(cowplot)
+library(gt)
+
+
+data("strengthvolume")
+data("dxadata")
+
+data <- dxadata %>%
+  select(participant:include, lean.left_leg, lean.right_leg) %>%
+  pivot_longer(names_to = "leg", 
+               values_to = "lean.mass", 
+               cols = lean.left_leg:lean.right_leg) %>%
+  mutate(leg = if_else(leg == "lean.left_leg", "L", "R"), 
+         sets = if_else(multiple == leg, "multiple", "single")) %>%
+  select(participant, time, sex, include, sets, leg, lean.mass) %>%
+  full_join(strengthvolume) %>% 
+  filter(exercise == "legext",
+         !is.na(load)) %>%
+    group_by(participant) %>% 
+    filter(n() == 12) %>% 
+  ungroup() %>%
+  mutate(time = factor(time, levels = c("pre", "session1", "week2", "week5", "week9", "post")),
+         sets = factor(sets, levels = c("single", "multiple")),
+         timec = as.numeric(case_when(time == "pre" ~ 0,
+                                      time == "session1" ~ 0,
+                                      time == "week2" ~ 2,
+                                      time == "week5" ~ 5,
+                                      time == "week9" ~ 9,
+                                      time == "post" ~ 12)))
+
+```
+
+## Introduksjon
+
+## Metode
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: "tbl-kar"
+#| tbl-cap: "Karakteristikker av deltakerne ved pretest"
+
+
+dxadata %>%
+  select(participant:weight, lean.left_leg, lean.right_leg) %>%
+  pivot_longer(names_to = "leg", 
+               values_to = "lean.mass", 
+               cols = lean.left_leg:lean.right_leg) %>% 
+  mutate(leg = if_else(leg == "lean.left_leg", "L", "R"), 
+         sets = if_else(multiple == leg, "multiple", "single"),
+         lean.mass = lean.mass / 100) %>%
+  select(participant, age, height, weight, time, sex, include, sets, leg, lean.mass) %>%
+  full_join(strengthvolume) %>% 
+  filter(exercise == "legext",
+         !is.na(load)) %>%
+    group_by(participant) %>% 
+    filter(n() == 12) %>% 
+  ungroup() %>% 
+  filter(time == "pre") %>% 
+  group_by(sets) %>% 
+  mutate(N = n()) %>% 
+  pivot_longer(names_to = "variable",
+               values_to = "values",
+               cols = c(age, height, weight, lean.mass, load, N)) %>% 
+  group_by(sets, variable) %>% 
+  summarise(Mean = mean(values, na.rm = T),
+            SD = sd(values, na.rm = T)) %>% 
+   mutate(MS = if_else(variable == "N",
+                      as.character(Mean),
+                      paste0(signif(Mean, 3),
+                             " (",
+                        signif(SD, 3), 
+                        ")"))) %>% 
+  select(-Mean, -SD) %>%
+  pivot_wider(names_from = sets,
+              values_from = MS) %>% 
+  gt() %>% 
+  cols_label(variable = "",
+             multiple = "3 serier",
+             single = "1 serie") %>% 
+  tab_footnote(footnote = "Abbriviations: lean.mass, fettfri masse; load, 1RM kneekstensjon")
+  
+  
+```
+
+
+### Deltakere og studiedesign
+
+### DXA
+
+### Maksimal kneekstensjon
+
+## Resultat
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| label: "tbl-str"
+#| tbl-cap: "Resultater i styrkeøkning fra LMM"
+
+# The lmer function from the lme4 package.
+m1_str <- lmer(load ~ timec * sets + (1|participant), data = data)
+
+res_str <- summary(m1_str)$coef %>% 
+  data.frame() %>% 
+  mutate(Koeffisienter = c("Intercept", "Tid", "Gruppe3serier", "Tid:Gruppe3serier")) %>% 
+  select(Koeffisienter, Estimate, Std..Error, df, t.value, Pr...t..) %>% 
+  gt() %>% 
+  cols_label(Estimate = "estimat",
+             Std..Error = "se",
+             df = "df",
+             t.value = "t.verdi",
+             Pr...t.. = "p.verdi") %>% 
+  fmt_number(columns = Estimate:Pr...t.., decimals = 2) %>% 
+  tab_footnote(footnote = "Forkortelser: se, standardfeil; df, frihetsgrader")
+
+res_str
+```
+
+
+
+```{r}
+data_lmb <- data %>% 
+  filter(time == "pre" | time == "post") %>% 
+  select(participant, time, sets, lean.mass) %>% 
+  mutate(lean.mass = lean.mass / 100)
+
+m1_lbm <- lmer(lean.mass ~ time * sets + (1|participant), data = data_lmb)
+
+m0_lbm <- lmer(lean.mass ~ time + sets + (1|participant), data = data_lmb)
+
+p_lbm <- anova(m0_lbm, m1_lbm)[2,8]
+
+est_lbm <- emmeans(m1_lbm, specs = ~ time|sets)
+
+
+
+## Figure 1: Estimated means and raw data
+
+figA <- est_lbm %>%
+  data.frame() %>%
+  
+  ggplot(aes(time, emmean, group = sets, color = sets) ) +
+    # Adds raw data
+  geom_line(data = data_lmb, aes(time, lean.mass, group = participant, color = sets), 
+            # Add transparency to individual lines
+            alpha = 0.4) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
+                position = position_dodge(width = 0.2), 
+                width = 0.15,
+                size = 0.4,
+                color = "black") +
+  geom_line(position = position_dodge(width = 0.2)) +
+  geom_point(position = position_dodge(width = 0.2),
+             size = 3) +
+  theme_classic() +
+  
+  # Changing axis titles and title in the legend
+  labs(y = "Fettfri masse (kg)", 
+       color = "Treningsvolum") +
+   theme(axis.text.x = element_blank(), 
+        axis.title.x = element_blank())
+  
+
+# Save the confidence intervals
+conf_intervals_lbm <- confint(m1_lbm)
+
+# Save the regression coefficients
+coefs_lbm <- summary(m1_lbm)$coef
+
+# Using cbind (column bind) to combine the two data frames
+coef_summary_lbm <- cbind(coefs_lbm, data.frame(conf_intervals_lbm)[3:6, ]) 
+
+
+# Figure B: Differences between groups (interaction terms with 95% CI)
+figB <- coef_summary_lbm %>%
+  mutate(coef = rownames(.)) %>%
+  # Filter only the interaction variables
+  filter(coef %in% c("setsmultiple", "timepost:setsmultiple")) %>% 
+  # Make a "timepoint" variable to represent the "dat" data set.
+  mutate(time = gsub("time", "", coef), 
+         time = gsub(":setsmultiple", "", time), 
+         time = if_else(time == "setsmultiple", "pre", time)) %>%
+  # Fix order of the time variable
+  mutate(time = factor(time, levels = c("pre", "post"))) %>%
+  
+  # Create the plot
+  ggplot(aes(time, Estimate)) + 
+  
+  
+  # Add a line indicating zero geom_hline (horizontal line)
+  geom_hline(yintercept = 0, lty = 2) +
+  
+  geom_errorbar(aes(ymin = X2.5.., ymax = X97.5..), width = 0.1) +
+  geom_point(shape = 24, size = 3, fill = "orange") +
+  theme_classic() + 
+  
+    # Changing axis titles and title in the legend
+  labs(y = "Gj.snitt gruppevis forskjell\n(kg, 95% CI)",
+       x = "Tidspunkt") 
+
+  
+# Using cowplot to plot both figures in 1
+
+
+# Plot grid using figA and figB
+plot_grid(figA, figB, ncol = 1, 
+          # Align vertically so that the x axis matches
+          align = "v", 
+          # Set alignment so that axis align both on the left (l) and right (r)
+          # axis
+          axis = "lr")
+```
+
+
+
+## Diskusjon
