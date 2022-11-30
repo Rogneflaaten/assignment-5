@@ -56,9 +56,9 @@ data <- dxadata %>%
 ## Introduksjon
 I utrente personer som begynner med styrketrening varierer økningen i muskelstyrke, målt som 1RM, med 1% per økt, men med en variasjon på hele 0.1-3% [@mcdonagh_adaptive_1984], og tverrsnittet til de styrketrente musklene øker 0.1-0.5% per økt [@wernbom_influence_2007]. Den store varisjonen i styrke- og muskelvekst er sannsynligvis avhengig av hvilken muskelgruppe som trenes, fibertypesammensetning, antall serier, repetisjoner, intensitet, pausetid og genetiske ulikheter [@tonnessen_trening_2018; @wackerhage_molecular_2014; @raastad_styrketrening_2010]. 
 
-Sannsynligvis er det et dose-respons-forhold mellom treningsmengde og styrkeøkning per tidsenhet [@raastad_styrketrening_2010]. Treningsmengden er både avhengig av antall økter i uka og hvor mange serier eller øvelser vi trener på hver muskegruppe. Ettersom tidsbegrensninger ofte hindrer deltakere i treningsprogrammer [@choi_correlates_2017] er det av interesse å finne den minimale treningsdosen som gir gunstige adaptasjoner. Oversiktsarikler fra en amerikansk forskergruppe løfter konseptet om at en serie i hver øvelse er den mest effektive treningsformen [@carpinelli_strength_1998; @carpinelli_berger_2002]. Videre hevder de at det er bortkastet tid å gjennomføre mer enn en serie på en muskelgruppe. Andre meta-analyser viser at moderate treningsvolum (3 serier) er fordelaktig [@krieger_single_2009; @krieger_single_2010]. Disse ambivalente resultatene skyldes til dels denne store interindivid-variasjonen i treningsrespons. Intraindivide studiedesign med unilateral treningsvolum grupper vil trolig fjerne mye usikkerhet.
+Sannsynligvis er det et dose-respons-forhold mellom treningsmengde og styrkeøkning per tidsenhet [@raastad_styrketrening_2010]. Treningsmengden er både avhengig av antall økter i uka og hvor mange serier eller øvelser vi trener på hver muskegruppe. Ettersom tidsbegrensninger ofte hindrer deltakere i treningsprogrammer [@choi_correlates_2017] er det av interesse å finne den minimale treningsdosen som gir gunstige adaptasjoner. Oversiktsarikler fra en amerikansk forskergruppe løfter konseptet om at en serie i hver øvelse er den mest effektive treningsformen [@carpinelli_strength_1998; @carpinelli_berger_2002]. Videre hevder de at det er bortkastet tid å gjennomføre mer enn en serie på en muskelgruppe. Andre meta-analyser viser at moderate treningsvolum (3 serier) er fordelaktig [@krieger_single_2009; @krieger_single_2010]. Disse ambivalente resultatene skyldes til dels denne store interindivid-variasjonen i treningsrespons. Intraindivide studiedesign med unilateral treningsvolum på ekstremitetene vil trolig fjerne mye usikkerhet.
 
-Målet med denne studien var å undersøke effekten av single- og multiserie (3 serier) treningsprotokoller på muskelstyrke og muskelmasse med et intraindivid studiedesign.
+Målet med denne studien var å undersøke effekten av singel- og multiserie (3 serier) treningsprotokoller på muskelstyrke og muskelmasse med et intraindivid studiedesign.
 
 ## Metode
 
@@ -154,8 +154,6 @@ change_lbm <- data %>%
             se = sd / sqrt(18)) %>% 
   print()
 ```
-
-Concomitantly, multiple-set resistance-training led to greater increases in muscle strength over the course of the intervention than single-set training (all variables P < 0.05, Fig. 2C and D). This difference in strength gain gradually increased over the first 9 weeks of the study (Fig. 2E). In line with this, multiple-set training led to greater increases in knee extensor CSA (mean percentage-point difference 1.62, [0.75, 2.50], P < 0.001, Fig. 2B).
 
 Det ble ikke observert en effekt av treningsvolum på verken utvikling i 1RM kneekstensjon eller fettfrimasse i bein etter treningsintervensjonen, se @fig-str og @fig-lbm. 
 
