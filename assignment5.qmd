@@ -1,6 +1,6 @@
 ---
 title: "Assignment 5"
-format: html
+format: pdf
 editor_options: 
   chunk_output_type: console
 bibliography: referanser.bib
@@ -18,11 +18,7 @@ library(lme4)
 library(emmeans)
 library(pbkrtest)
 library(lmerTest)
-library(cowplot)
 library(gt)
-library(webshot2)
-library(patchwork)
-library(png)
 
 
 data("strengthvolume")
@@ -139,33 +135,65 @@ All beskrvende data er presentert som gj.snitt (standardfeil) om annet ikke er s
 
 ## Resultat
 
+Både singel og multipel treningssett økte muskelstyrken i 1RM kneekstensjon og muskelmassen (fettfri masse), se @fig-str og @fig-lbm. Det ble imidlertidig ikke observert en effekt av treningsvolum på utvikling i 1RM kneekstensjon eller fettfri masse etter 12 uker med styrketrening, se @tbl-mod og @fig-change.
+
+
 ```{r}
-#| include: false
+#| echo: false
 #| warning: false
 #| message: false
+#| label: "tbl-mod"
+#| tbl-cap: "Volumavhengig effekt på muskelstyrke og muskelmasse fra LMMs. Koeffisienten av interesse er Tid:Gruppemultiple ettersom den viser til forskjell i stigningstallet for modellen mellom treningsvolumgruppenegruppene. SE viser til standardfeil og DF viser til frihetsgrader"
 
-change_lbm <- data %>% 
+m1_str <- lmer(load ~ timec * sets + (1|participant), data = data)
+
+tab_str <- summary(m1_str)$coef %>% 
+  data.frame() %>% 
+   mutate(Koeffisienter = c("Intercept", 
+                           "Tid", 
+                           "Gruppemultiple", 
+                           "Tid:Gruppemultiple")) %>%
+  select(Koeffisienter, Estimate, Std..Error, df, t.value, Pr...t..)
+
+data_lmb <- data %>% 
   filter(time == "pre" | time == "post") %>% 
-  pivot_wider(names_from = time,
-              values_from = lean.mass) %>% 
-  mutate(change = post - pre) %>% 
-  summarise(m = mean(change, na.rm = T),
-            sd = sd(change, na.rm = T),
-            se = sd / sqrt(18)) %>% 
-  print()
+  select(participant, time, sets, lean.mass) %>% 
+  mutate(lean.mass = lean.mass / 1000)
+
+m1_lbm <- lmer(lean.mass ~ time * sets + (1|participant), data = data_lmb)
+
+summary(m1_lbm)$coef %>% 
+  data.frame() %>% 
+   mutate(Koeffisienter = c("Intercept", 
+                           "Tid", 
+                           "Gruppemultiple", 
+                           "Tid:Gruppemultiple")) %>%
+  select(Koeffisienter, Estimate, Std..Error, df, t.value, Pr...t..) %>% 
+  full_join(tab_str) %>% 
+  gt() %>% 
+  cols_label(Koeffisienter = md("**Koeffisienter**"),
+             Estimate = md("**Estimat**"),
+             Std..Error = md("**SE**"),
+             df = md("**DF**"),
+             t.value = md("**t.verdi**"),
+             Pr...t.. = md("**p.verdi**")) %>% 
+  fmt_number(columns = Estimate:Pr...t.., decimals = 2) %>% 
+  tab_row_group(label = md("*Fettfri Masse*"), rows = 1:4) %>% 
+  tab_row_group(label = md("*1RM Kneekstensjon*"), rows = 5:8)
+
+
 ```
 
-Det ble ikke observert en effekt av treningsvolum på verken utvikling i 1RM kneekstensjon eller fettfrimasse i bein etter treningsintervensjonen, se @fig-str og @fig-lbm. 
 
 ```{r}
 #| echo: false
 #| warning: false
 #| message: false
 #| label: "fig-str"
-#| fig-cap: "Volumavhengig effekt på muskelstyrke"
+#| fig-cap: "Volumavhengig effekt på muskelstyrke i 1RM kneekstensjon. Punkter viser til gjennomsnitt og stolpene viser til gjennomsnittets standardavvik"
 
 
-fig1 <- data %>% 
+data %>% 
   group_by(time, sets) %>% 
   summarise(Mean = mean(load, na.rm = T),
             SD = sd(load, na.rm = T)) %>% 
@@ -179,136 +207,38 @@ fig1 <- data %>%
   geom_line(position = position_dodge(width = 0.7)) +
   geom_point(position = position_dodge(width = 0.7),
              size = 3) +
+  geom_errorbar(aes(ymin = Mean - SD, ymax = Mean + SD), 
+                position = position_dodge(width =0.7),
+                width = 0.7) +
   scale_x_continuous(breaks = seq(0, 16, 1)) +
-  scale_y_continuous(breaks = seq(50, 100, 5)) +
+  scale_y_continuous(breaks = seq(40, 130, 10)) +
   labs(x = "Tid (uker)",
        y = "1RM Kneekstensjon (kg)",
-       color = "Treningsvolum",
-       tag = "A") +
+       color = "Treningsvolum") +
   theme_classic()
 
-tab1 <- data %>% 
-  group_by(time, sets) %>% 
-  summarise(Mean = mean(load, na.rm = T),
-            SD = sd(load, na.rm = T),
-            N = n()) %>% 
-   mutate(MS = if_else(time == "N",
-                      as.character(Mean),
-                      paste0(signif(Mean, 3),
-                             " (",
-                        signif(SD, 3), 
-                        ")"))) %>% 
-  select(-Mean, -SD, -N) %>% 
-  pivot_wider(names_from = time,
-              values_from = MS) %>% 
-  gt() %>% 
-  cols_label(sets = "Treningsvolum",
-             pre = "Pretest",
-             session1 = "Trening 1",
-             week2 = "Uke 2",
-             week5 = "Uke 5",
-             week9 = "Uke 9",
-             post = "Posttest") %>% 
-  tab_spanner(label = "Tidspunkt",
-              columns = pre:post) %>% 
-  tab_header(title = "B") %>% 
-  tab_footnote(footnote = "Data er presenter som gj.snitt (standardfeil)")
-
-tmp <- tempfile(fileext = '.png') #generate path to temp .png file
-gtsave(tab1, tmp) #save gt table as png
-table_png <- png::readPNG(tmp, native = TRUE) # read tmp png file
-
-
-
-fig1 / table_png
-
-
-
 ```
 
-@tbl-str viser modelkoeffisienter fra LMMs for muskelstyrke.
 
 ```{r}
 #| echo: false
 #| warning: false
 #| message: false
-#| label: "tbl-str"
-#| tbl-cap: "Volumavhengig effekt på muskelstyrke fra LMM"
-
-# The lmer function from the lme4 package.
-m1_str <- lmer(load ~ timec * sets + (1|participant), data = data)
-
-res_str <- summary(m1_str)$coef %>% 
-  data.frame() %>% 
-  mutate(Koeffisienter = c("Intercept", "Tid", "Gruppe3serier", "Tid:Gruppe3serier")) %>% 
-  select(Koeffisienter, Estimate, Std..Error, df, t.value, Pr...t..) %>% 
-  gt() %>% 
-  cols_label(Estimate = "estimat",
-             Std..Error = "se",
-             df = "df",
-             t.value = "t.verdi",
-             Pr...t.. = "p.verdi") %>% 
-  fmt_number(columns = Estimate:Pr...t.., decimals = 2) %>% 
-  tab_footnote(footnote = "Forkortelser: se, standardfeil; df, frihetsgrader")
-
-res_str
-```
-
-@tbl-lbm viser modelkoeffisienter fra LMMs for fettfrimasse i beinene.
-
-```{r}
-#| echo: false
-#| warning: false
-#| message: false
-#| label: "tbl-lbm"
-#| tbl-cap: "Volumavhegig effekt på muskelmasse fra LMM"
-
-
-data_lmb <- data %>% 
-  filter(time == "pre" | time == "post") %>% 
-  select(participant, time, sets, lean.mass) %>% 
-  mutate(lean.mass = lean.mass / 1000)
-
-m1_lbm <- lmer(lean.mass ~ time * sets + (1|participant), data = data_lmb)
-
-res_lbm <- summary(m1_lbm)$coef %>% 
-  data.frame() %>% 
-   mutate(Koeffisienter = c("Intercept", "Tid", "Gruppe3serier", "Tid:Gruppe3serier")) %>% 
-  select(Koeffisienter, Estimate, Std..Error, df, t.value, Pr...t..) %>% 
-  gt() %>% 
-  cols_label(Estimate = "estimat",
-             Std..Error = "se",
-             df = "df",
-             t.value = "t.verdi",
-             Pr...t.. = "p.verdi") %>% 
-  fmt_number(columns = Estimate:Pr...t.., decimals = 2) %>% 
-  tab_footnote(footnote = "Forkortelser: se, standardfeil; df, frihetsgrader")
-
-res_lbm
-
-```
-
-```{r}
-#| echo: false
-#| warning: false
-#| message: false
+#| fig-height: 3
+#| fig-width: 6
 #| label: "fig-lbm"
-#| fig-cap: "Volumavhengig effekt på muskelmasse"
-#| fig-subcap: "Figur A viser endring i fettfri masse fra pre- til posttest for begge volumgruppene. Figur B viser den gjennomsnittlige forskjellen mellom volumgruppene for både pre- og posttest"
+#| fig-cap: "Volumavhengig effekt på fettfri masse. Linjene viser hver deltakers forandring i fettfri masse fra pre- til posttest, punktene viser gjennomsnitt og stolpene viser gjennomsnittets konfidensintervaller"
 
-
-
-## Figure 1: Estimated means and raw data
 
 est_lbm <- emmeans(m1_lbm, specs = ~ time|sets)
 
-figA <- est_lbm %>%
+est_lbm %>%
   data.frame() %>%
-  
   ggplot(aes(time, emmean, group = sets, color = sets) ) +
-    # Adds raw data
-  geom_line(data = data_lmb, aes(time, lean.mass, group = participant, color = sets), 
-            # Add transparency to individual lines
+  geom_line(data = data_lmb, 
+            aes(time, lean.mass, 
+                group = participant, 
+                color = sets),
             alpha = 0.4) +
   geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), 
                 position = position_dodge(width = 0.2), 
@@ -319,67 +249,49 @@ figA <- est_lbm %>%
   geom_point(position = position_dodge(width = 0.2),
              size = 3) +
   theme_classic() +
-  
-  # Changing axis titles and title in the legend
   labs(y = "Fettfri masse (kg)", 
-       color = "Treningsvolum",
-       tag = "A") +
+       color = "Treningsvolum") +
    theme(axis.text.x = element_blank(), 
         axis.title.x = element_blank())
-  
 
-# Save the confidence intervals
-conf_intervals_lbm <- confint(m1_lbm)
-
-# Save the regression coefficients
-coefs_lbm <- summary(m1_lbm)$coef
-
-# Using cbind (column bind) to combine the two data frames
-coef_summary_lbm <- cbind(coefs_lbm, data.frame(conf_intervals_lbm)[3:6, ]) 
-
-
-# Figure B: Differences between groups (interaction terms with 95% CI)
-figB <- coef_summary_lbm %>%
-  mutate(coef = rownames(.)) %>%
-  # Filter only the interaction variables
-  filter(coef %in% c("setsmultiple", "timepost:setsmultiple")) %>% 
-  # Make a "timepoint" variable to represent the "dat" data set.
-  mutate(time = gsub("time", "", coef), 
-         time = gsub(":setsmultiple", "", time), 
-         time = if_else(time == "setsmultiple", "pre", time)) %>%
-  # Fix order of the time variable
-  mutate(time = factor(time, levels = c("pre", "post"))) %>%
-  
-  # Create the plot
-  ggplot(aes(time, Estimate)) + 
-  
-  
-  # Add a line indicating zero geom_hline (horizontal line)
-  geom_hline(yintercept = 0, lty = 2) +
-  
-  geom_errorbar(aes(ymin = X2.5.., ymax = X97.5..), width = 0.1) +
-  geom_point(shape = 24, size = 3, fill = "orange") +
-  theme_classic() + 
-  
-    # Changing axis titles and title in the legend
-  labs(y = "Gj.snitt gruppevis forskjell\n(kg, 95% CI)",
-       x = "Tidspunkt",
-       tag = "B") 
-
-  
-# Using cowplot to plot both figures in 1
-
-
-# Plot grid using figA and figB
-plot_grid(figA, figB, ncol = 1, 
-          # Align vertically so that the x axis matches
-          align = "v", 
-          # Set alignment so that axis align both on the left (l) and right (r)
-          # axis
-          axis = "lr")
 ```
 
 
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-height: 2
+#| fig-width: 3
+#| label: "fig-change"
+#| fig-cap: "Gjennomsnittlig forskjeller mellom treningsvolumgruppene. Punktene viser gjennomsnittlig forskjell og stolpene viser konfidensintervallen til gjennomsnittene" 
+
+conf_intervals_lbm <- confint(m1_lbm)
+
+coefs_lbm <- summary(m1_lbm)$coef
+
+coef_summary_lbm <- cbind(coefs_lbm, data.frame(conf_intervals_lbm)[3:6, ]) 
+
+
+coef_summary_lbm %>%
+  mutate(coef = rownames(.)) %>%
+  filter(coef %in% c("setsmultiple", "timepost:setsmultiple")) %>% 
+  mutate(time = gsub("time", "", coef), 
+         time = gsub(":setsmultiple", "", time), 
+         time = if_else(time == "setsmultiple", "pre", time)) %>%
+  mutate(time = factor(time, levels = c("pre", "post"))) %>%
+  ggplot(aes(time, Estimate)) + 
+  geom_hline(yintercept = 0, lty = 2) +
+  geom_errorbar(aes(ymin = X2.5.., ymax = X97.5..), width = 0.1) +
+  geom_point(shape = 24, size = 3, fill = "orange") +
+  theme_classic() + 
+  labs(y = "Gj.snitt gruppevis forskjell\n(kg, 95% CI)",
+       x = "Tidspunkt") 
+
+```
+
+\pagebreak
 ## Diskusjon
 
 I denne studien så vi ikke en effekt av treningsvolum på utvikling i muskemasse eller muskelstyrke. For utrente individer ser det dermed ut som man får like stor styrke- og muskelvekst av å gjennomføre en serie per muskelgruppe som å gjennomføre tre serier. Dette samsvarer med oversiktsartiklene som hevder at det ikke finnes en ytterligere gevinst av å øke treningsvolumet utover en serie [@carpinelli_strength_1998; @carpinelli_berger_2002]. Det samsvarer derimot ikke med meta-analyser som har konkludert med at moderat volum er fordelaktig på utvikling i muskelstyrke og muskelmasse [@krieger_single_2009; @krieger_single_2010; @schoenfeld_dose-response_2017]. Resultatene i denne studien bør imidlertidig tolkes forsiktig ettersom en nokså lav utvalgstørrelse på 19 senker den statistiske styrken. I tillegg var deltakerne på et lavt treningsnivå før treningsintervensjonen, dette er av betydning ettersom at effekten av treningsvolum på styrke- og muskelvekst er trolig lavere for utrente [@raastad_styrketrening_2010]. Generelt ser det ut til at jo bedre trent personen er, desto flere serier må personen trene på hver muskelgruppe [@peterson_maximizing_2004; @rhea_meta-analysis_2003]. 
